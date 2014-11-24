@@ -4,11 +4,9 @@
 # Description: 	Script that processes the incoming notification emails from Enote
 # 				and upload the detected events in a cloud DB for later processing.
 # Language:		Perl
-# 
-#
-#
-#
-#
+# Author:		Marco Ruiz Mora
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
 use strict;
 use warnings;
 use lib "/home/rumarco/usr/lib64/perl5";
@@ -78,33 +76,31 @@ for (;;)
 			$sth->finish();
 			$dbh->commit or die $DBI::errstr;
         	#print "ALERT: $1 $2 $3\n";
-        	#print "ALERT: $1\n";
-        	
+        	print "ALERT: $1\n";        	
         }
-        if ($line =~ m/^Subject:\s([\w|\-|\s|\d]+\s:\s(N-IM[\d|-]+)\s\(.+\)\s-\sDispatched)/)
+       
+        if ($line =~ m/^Subject:\s([\w|\-|\s|\d]+\s:\s(N-IM[\d|-]+)\s(\(.+\))\s-\sDispatched)/)
         {
 			$serverDate = strftime("%m/%d/%Y %I:%M %p", localtime());
-			$dispatched_ticket_id = $1;
-			$sth = $dbh->prepare("INSERT INTO ticket_in_dispatched
-                       (ticket_id, ticket_subject, ticket_workgroup, ticket_sent_pager, ticket_date_added_db, sms_message_to_mobile,ticket_date_sent_page )
-                        values
-                       (?, ?, ?, ?, ?, ?,?)");
-			$sth->execute($2, 'null', 'null', 'N', $serverDate, $1,'null') or die $DBI::errstr;
-			$sth->finish();
-			$dbh->commit or die $DBI::errstr;
-			#print "ALERT: $2\n";
-			#print "ALERT: $1 $2\n";
+			$dispatched_ticket_id = $2;
+			$ticket_dispatched_prio = $3;
         }
-        if ($line =~ m/(^N-IM[\d|-]+)\shas been\sdispatched\sto\sassignment\sgroup([\w\d|-]+)/)
+        
+        if ($line =~ m/(^N-IM[\d|-]+)\shas been\sdispatched\sto\sassignment\sgroup\s?([\w\d|-]+)/)
         {
 			$dispatched_ticket_id_body = $1;
 			$dispatched_ticket_workgroup = $2;
 			if ($dispatched_ticket_id == $dispatched_ticket_id_body)
 			{
-				$update_statement = "UPDATE ticket_in_dispatched SET ticket_workgroup = ? WHERE ticket_id = ?";
-				$rv = $dbh->do($update_statement, undef, $dispatched_ticket_workgroup, $dispatched_ticket_id); 
-				$DBI::err && die $DBI::errstr;
-			}
+				my $sms_subject = "ALERT: Incident $dispatched_ticket_id $ticket_dispatched_prio assigned to $2\n";
+				$sth = $dbh->prepare("INSERT INTO ticket_in_dispatched
+            	          (ticket_id, ticket_subject, ticket_workgroup, ticket_sent_pager, ticket_date_added_db, sms_message_to_mobile,ticket_date_sent_page )
+            	            values
+                	       (?, ?, ?, ?, ?, ?,?)");
+				$sth->execute($dispatched_ticket_id, $sms_subject, $dispatched_ticket_workgroup, 'N', $serverDate, $sms_subject,'null') or die $DBI::errstr;
+				$sth->finish();
+				$dbh->commit or die $DBI::errstr;
+			}			
         }        
         ##### FOR DTV PAGING #####
         #if ($line =~ m/From\snoreply@[\w\d|.]+\s+[\w\d|\s|:]+[\d]+$/)
