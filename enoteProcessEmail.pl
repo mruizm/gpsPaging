@@ -22,10 +22,13 @@ my $ENOTE_MAIL_BYTES_FILE = '/home/rumarco/enote_mail_bytes.tmp';
 my $last_byte;
 my $line;
 my $alert_page;
-my $ll;
-my $lx;
 my $serverDate = "";
 my $sth;
+my $dispatched_ticket_id_body;
+my $dispatched_ticket_workgroup;
+my $dispatched_ticket_id;
+my $update_statement;
+my $rv;
 
 if (-e $ENOTE_MAIL_BYTES_FILE)
 {
@@ -81,7 +84,7 @@ for (;;)
         if ($line =~ m/^Subject:\s([\w|\-|\s|\d]+\s:\s(N-IM[\d|-]+)\s\(.+\)\s-\sDispatched)/)
         {
 			$serverDate = strftime("%m/%d/%Y %I:%M %p", localtime());
-			my $dispatched_ticket_id = $1;
+			$dispatched_ticket_id = $1;
 			$sth = $dbh->prepare("INSERT INTO ticket_in_dispatched
                        (ticket_id, ticket_subject, ticket_workgroup, ticket_sent_pager, ticket_date_added_db, sms_message_to_mobile,ticket_date_sent_page )
                         values
@@ -94,8 +97,8 @@ for (;;)
         }
         if ($line =~ m/(^N-IM[\d|-]+)\shas been\sdispatched\sto\sassignment\sgroup([\w\d|-]+)/)
         {
-			my $dispatched_ticket_id_body = $1;
-			my $dispatched_ticket_workgroup = $2;
+			$dispatched_ticket_id_body = $1;
+			$dispatched_ticket_workgroup = $2;
 			if ($dispatched_ticket_id == $dispatched_ticket_id_body)
 			{
 				$update_statement = "UPDATE ticket_in_dispatched SET ticket_workgroup = ? WHERE ticket_id = ?";
