@@ -34,6 +34,7 @@ my $ttr_ticket_id;
 my $ttr_ticket_prio;
 my $ttr_percent;
 my $sms_ttr_subject;
+my $full_ticket_subject;
 
 #Checking if pointer for mail spool file exists and performing actions according to condition
 if (-e $ENOTE_MAIL_BYTES_FILE)
@@ -74,7 +75,7 @@ for (;;)
     	my $line = $_;
         chomp($line);
         
-        #Condition that searches for SLO emails and make insert of ticket in db speficied for it
+        #Condition that searches for SLO emails and make insert of ticket into into db speficied for it
         if ($line =~ m/^Subject:\s([\w|\-|\s|\d]+\s:\s(N-IM[\d|-]+)\s\(.+\)\s-\s(TTR\s[\w|\d|-|\s]+))/)
        	{
         	$serverDate = strftime("%m/%d/%Y %I:%M %p", localtime());
@@ -91,26 +92,27 @@ for (;;)
 			$dbh->commit or die $DBI::errstr;
         	#print "ALERT: $1\n";        	
         }
-       
+        #Condition that searches for dispatched emails and gets priority and ticket it
         if ($line =~ m/^Subject:\s([\w|\-|\s|\d]+\s:\s(N-IM[\d|-]+)\s(\(.+\))\s-\sDispatched)/)
         {
 			$serverDate = strftime("%m/%d/%Y %I:%M %p", localtime());
 			$dispatched_ticket_id = $2;
 			$ticket_dispatched_prio = $3;
+			$full_ticket_subject = $1;
         }
-        
+        #Condition that searches for workgroup in dispatched email body and compares it with $dispatched_ticket_id
         if ($line =~ m/(^N-IM[\d|-]+)\shas been\sdispatched\sto\sassignment\sgroup\s?([\w\d|-]+)/)
         {
 			$dispatched_ticket_id_body = $1;
 			$dispatched_ticket_workgroup = $2;
-			if ($dispatched_ticket_id == $dispatched_ticket_id_body)
+			if ($dispatched_ticket_id eq $dispatched_ticket_id_body)
 			{
 				my $sms_subject = "ALERT: Incident $dispatched_ticket_id $ticket_dispatched_prio assigned to $2\n";
 				$sth = $dbh->prepare("INSERT INTO ticket_in_dispatched
             	          (ticket_id, ticket_subject, ticket_workgroup, ticket_sent_pager, ticket_date_added_db, sms_message_to_mobile,ticket_date_sent_page )
             	            values
                 	       (?, ?, ?, ?, ?, ?,?)");
-				$sth->execute($dispatched_ticket_id, $1, $dispatched_ticket_workgroup, 'N', $serverDate, $sms_subject,'null') or die $DBI::errstr;
+				$sth->execute($dispatched_ticket_id, $full_ticket_subject, $dispatched_ticket_workgroup, 'N', $serverDate, $sms_subject,'null') or die $DBI::errstr;
 				$sth->finish();
 				$dbh->commit or die $DBI::errstr;
 			}			
