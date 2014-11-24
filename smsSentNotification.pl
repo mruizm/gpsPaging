@@ -27,7 +27,7 @@ $sth = $dbh->prepare("SELECT ticket_id, sms_message_to_mobile FROM ticket_in_dis
 $sth->execute('N') or die $DBI::errstr;
 while (my @results = $sth->fetchrow()) 
 {
-	my $sms_to_send = "ALERT: ".$results[1];
+	my $sms_to_send = "$results[1]";
 	$ticket_id_db = $results[0];
 	chomp($ticket_id_db);
 	#print "$sms_to_send\n";
