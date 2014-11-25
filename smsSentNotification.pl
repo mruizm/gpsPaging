@@ -1,108 +1,130 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
-use lib "/home/rumarco/usr/lib64/perl5";
-
+use Device::Gsm;
 use DBI;
 use POSIX qw(strftime);
 
-my $dbh = DBI->connect('dbi:mysql:dbname=gpsinternaldb;port=1531;host=g1t4741.austin.hp.com','gpsinternaldb','Welcome-1234',{AutoCommit=>0,RaiseError=>0,PrintError=>1});
+my @alerts_to_submit_dispacthed = ();
+my %alerts_to_submit_slo;
+my $alerts_to_submit_slo;
+my @alerts_to_submit_all = ();
+#my @oncallPhone = ("+50687259239", "+50688457177", "+50687013491", "+50660295500");
+#my @oncallPhone = ("+50688457177", "+50660295500", "+50688661958", "+50671097633");
+my @oncallPhoneDTV = ("+50688457177");
 
-my $ENOTE_MAIL_BYTES_FILE = '/home/rumarco/enote_mail_bytes.tmp';
-my $last_byte;
-my $line;
-my $alert_page;
-my $ll;
-my $lx;
-my $serverDate = "";
+my $gsm = new Device::Gsm( port => '/dev/ttyUSB0' );
+my $dbh = DBI->connect('dbi:mysql:dbname=gpsinternaldb;port=1531;host=g1t4741.austin.hp.com','gpsinternaldb','Welcome-1234');
 my $sth;
+my $ticket_id_db;
+my $ticket_description;
+my $update_statement;
+my $response = "Y";
+my $rv;
 
-if (-e $ENOTE_MAIL_BYTES_FILE)
+$sth = $dbh->prepare("SELECT a.ticket_id, a.ticket_workgroup, a.sms_message_to_mobile FROM ticket_in_dispatched a
+            			where a.ticket_sent_pager = ?");
+$sth->execute('N') or die $DBI::errstr;
+while (my @results = $sth->fetchrow()) 
 {
-        open(MY_ENOTE_FILE, $ENOTE_MAIL_BYTES_FILE)
-                or die "Error while reading file $ENOTE_MAIL_BYTES_FILE: $!\n";
-        while(<MY_ENOTE_FILE>)
-        {
-                chomp;
-                $last_byte = $_;
-        }
-}
-else
-{
-        open(my $fh, '>', $ENOTE_MAIL_BYTES_FILE)
-                or die "Error while creating file $ENOTE_MAIL_BYTES_FILE: $!\n";
-        print $fh "0\n";
-        close $fh;
-        $last_byte = 0;
+	$ticket_id_db = $results[0];
+	my $ticket_wg = $results[1];
+	my $sms_to_send = $results[2];
+	chomp($ticket_id_db);
+	
+	$sth = $dbh->prepare("SELECT distinct c.team_name FROM ito_team_to_workgroup c
+					WHERE c.team_workgroup = ? ");
+	$sth->execute($ticket_wg) or die $DBI::errstr;	
+	
+	while (my @results = $sth->fetchrow())
+	{
+		my $send_sms_team = $results[0];
+		
+		$sth = $dbh->prepare("SELECT b.user_mobile from users_info_table b
+					where b.user_is_oncall = 'Y' and b.user_team = ?");
+		$sth->execute($send_sms_team) or die $DBI::errstr;
+		#print "$sms_to_send\n";
+		#foreach(@oncallPhone)
+		while (my @results = $sth->fetchrow())
+		{
+			my $mobile_phone = $results[0];
+			if( $gsm->connect() ) 
+			{		
+				$gsm->register();
+				$gsm->send_sms
+				(
+					recipient => $mobile_phone,
+					content   => $sms_to_send
+				);		
+			}
+		}
+	}
+	#print "UPDATE ticket_in_dispatched SET ticket_sent_pager = $rv  WHERE ticket_id = $ticket_id_db\n";
+	$update_statement = "UPDATE ticket_in_dispatched SET ticket_sent_pager = ? WHERE ticket_id = ?";
+	$rv = $dbh->do($update_statement, undef, $response, $ticket_id_db); 
+	$DBI::err && die $DBI::errstr;
+
 }
 
-my $FILE = '/var/spool/mail/rumarco';
-open (INFILE, $FILE) || die "Not able to open the file: $FILE \n";
-for (;;)
+$sth = $dbh->prepare("SELECT ticket_id, ticket_subject, sms_message_to_mobile FROM ticket_with_slo
+                    where ticket_sent_pager = ?");
+$sth->execute('N') or die $DBI::errstr;
+while (my @results = $sth->fetchrow()) 
 {
-	if ($last_byte == 0)
-    {
-    	seek(INFILE, $last_byte, 0);
-    }
-    else
-    {
-    	seek(INFILE, $last_byte, 1);
-    }
-
-    for (; $_ = <INFILE>; $last_byte = tell)
-    {
-    	my $line = $_;
-        chomp($line);
-        
-        if ($line =~ m/^Subject:\s([\w|\-|\s|\d]+\s:\s(N-IM[\d|-]+)\s\(.+\)\s-\s(TTR\s[\w|\d|-|\s]+))/)
-       	{
-        	$serverDate = strftime("%m/%d/%Y %I:%M %p", localtime());
-        	$sth = $dbh->prepare("INSERT INTO ticket_with_slo
-                       (ticket_id, ticket_subject, ticket_workgroup, ticket_sent_pager, ticket_date_added_db, sms_message_to_mobile, ticket_date_sent_page)
-                        values
-                       (?, ?, ?, ?, ?, ?,?)");
-			$sth->execute($2, $3, 'null', 'N', $serverDate, $1,'null') or die $DBI::errstr;
-			$sth->finish();
-			$dbh->commit or die $DBI::errstr;
-        	#print "ALERT: $1 $2 $3\n";
-        	#print "ALERT: $1\n";
-        	
-        }
-        if ($line =~ m/^Subject:\s([\w|\-|\s|\d]+\s:\s(N-IM[\d|-]+)\s\(.+\)\s-\sDispatched)/)
-        {
-			$serverDate = strftime("%m/%d/%Y %I:%M %p", localtime());
-			$sth = $dbh->prepare("INSERT INTO ticket_in_dispatched
-                       (ticket_id, ticket_subject, ticket_workgroup, ticket_sent_pager, ticket_date_added_db, sms_message_to_mobile,ticket_date_sent_page )
-                        values
-                       (?, ?, ?, ?, ?, ?,?)");
-			$sth->execute($2, 'null', 'null', 'N', $serverDate, $1,'null') or die $DBI::errstr;
-			$sth->finish();
-			$dbh->commit or die $DBI::errstr;
-			#print "ALERT: $2\n";
-			#print "ALERT: $1 $2\n";
-        }
-        ##### FOR DTV PAGING #####
-        #if ($line =~ m/From\snoreply@[\w\d|.]+\s+[\w\d|\s|:]+[\d]+$/)
-        if (/From\snoreply@[\w\d|.]+\s+[\w\d|\s|:]+[\d]+$/ .. /Status: O/)
-        {
-        	if ($line =~ m/Subject:\s([\w\d|:|\s|+|?.]+)/)
-        	{
-        		$serverDate = strftime("%m/%d/%Y %I:%M %p", localtime());
-        		$sth = $dbh->prepare("INSERT INTO dtv_attention_pages
-                       (att_sms_alert_subject, att_sent_sms, att_alert_added_db)
-                        values
-                       (?, ?, ?)");
-				$sth->execute($1, 'N', $serverDate) or die $DBI::errstr;
-				$sth->finish();
-				$dbh->commit or die $DBI::errstr;        		
-        	}        	
-        }
-    }    
-    last;
+	$ticket_id_db = $results[0];
+	$ticket_description = $results[1];
+	chomp($ticket_id_db);
+	chomp($ticket_description);
+	my $sms_to_send = "ALERT: ".$results[2];	
+	#print "$sms_to_send\n";
+	foreach(@oncallPhone)
+	{
+		my $mobile_phone = $_;
+		if( $gsm->connect() ) 
+		{		
+			$gsm->register();
+			$gsm->send_sms
+			(
+				recipient => $mobile_phone,
+				content   => $sms_to_send
+			);		
+		}
+	}
+	#print "UPDATE ticket_with_slo SET ticket_sent_pager = $rv  WHERE ticket_id = $ticket_id_db AND ticket_subject = $ticket_description\n";
+	$update_statement = "UPDATE ticket_with_slo SET ticket_sent_pager = ? WHERE ticket_id = ? AND ticket_subject = ?";
+	$rv = $dbh->do($update_statement, undef, $response, $ticket_id_db, $ticket_description); 
+	$DBI::err && die $DBI::errstr;
 }
+
+##### DTV ATTENTION PAGES #####
+$sth = $dbh->prepare("SELECT att_alert_id, att_sms_alert_subject FROM dtv_attention_pages
+                    where att_sent_sms = ?");
+$sth->execute('N') or die $DBI::errstr;
+while (my @results = $sth->fetchrow()) 
+{
+	my $dtv_sms_to_send = $results[1];
+	my $dtv_id_db = $results[0];
+	#print "$dtv_sms_to_send\n";
+	chomp($dtv_id_db);
+	#print "$sms_to_send\n";
+	foreach(@oncallPhoneDTV)
+	{
+		my $dtv_mobile_phone = $_;
+		if( $gsm->connect() ) 
+		{		
+			$gsm->register();
+			$gsm->send_sms
+			(
+				recipient => $dtv_mobile_phone,
+				content   => $dtv_sms_to_send
+			);		
+		}
+	}
+	#print "UPDATE ticket_in_dispatched SET ticket_sent_pager = $rv  WHERE ticket_id = $ticket_id_db\n";
+	$update_statement = "UPDATE dtv_attention_pages SET att_sent_sms = ? WHERE att_alert_id = ?";
+	$rv = $dbh->do($update_statement, undef, $response, $dtv_id_db); 
+	$DBI::err && die $DBI::errstr;
+
+}
+$sth->finish();
 $dbh->disconnect;
-$last_byte = tell(INFILE);
-open(my $fh, '>', $ENOTE_MAIL_BYTES_FILE)
-        or die "Error while creating file $ENOTE_MAIL_BYTES_FILE: $!\n";
-print $fh "$last_byte\n";
-close $fh;
