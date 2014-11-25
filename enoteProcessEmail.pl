@@ -76,21 +76,27 @@ for (;;)
         chomp($line);
         
         #Condition that searches for SLO emails and make insert of ticket into into db speficied for it
-        if ($line =~ m/^Subject:\s([\w|\-|\s|\d]+\s:\s(N-IM[\d|-]+)\s\(.+\)\s-\s(TTR\s[\w|\d|-|\s]+))/)
+        if ($line =~ m/^Subject:\s([\w|\-|\s|\d]+\s:\s(N-IM[\d|-]+)\s(\(.+\))\s-\s(TTR\s[\w|\d|-|\s]+))/)
        	{
         	$serverDate = strftime("%m/%d/%Y %I:%M %p", localtime());
         	$ttr_ticket_id = $2;
         	$ttr_ticket_prio = $3;
         	$ttr_percent = $4;
         	$sms_ttr_subject = "ALERT: Incident $ttr_ticket_id $ttr_ticket_prio with $ttr_percent";
-        	$sth = $dbh->prepare("INSERT INTO ticket_with_slo
+        	$sth = $dbh->prepare("SELECT ticket_workgroup FROM ticket_in_dispatched
+        							WHERE ticket_id = ?");
+			$sth->execute($ttr_ticket_id) or die $DBI::errstr;
+			while (my @results = $sth->fetchrow()) 
+			{
+				my $ticket_ttr_workgroup = $results[0];
+				$sth = $dbh->prepare("INSERT INTO ticket_with_slo
                        (ticket_id, ticket_subject, ticket_workgroup, ticket_sent_pager, ticket_date_added_db, sms_message_to_mobile, ticket_date_sent_page)
                         values
                        (?, ?, ?, ?, ?, ?,?)");
-			$sth->execute($ttr_ticket_id, $1, 'null', 'N', $serverDate, $sms_ttr_subject,'null') or die $DBI::errstr;
-			$sth->finish();
-			$dbh->commit or die $DBI::errstr;
-        	#print "ALERT: $1\n";        	
+				$sth->execute($ttr_ticket_id, $1, $ticket_ttr_workgroup, 'N', $serverDate, $sms_ttr_subject,'null') or die $DBI::errstr;
+				$sth->finish();
+				$dbh->commit or die $DBI::errstr;				
+			}        	        	
         }
         #Condition that searches for dispatched emails and gets priority and ticket it
         if ($line =~ m/^Subject:\s([\w|\-|\s|\d]+\s:\s(N-IM[\d|-]+)\s(\(.+\))\s-\sDispatched)/)
