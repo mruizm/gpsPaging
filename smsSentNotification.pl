@@ -10,7 +10,7 @@ my %alerts_to_submit_slo;
 my $alerts_to_submit_slo;
 my @alerts_to_submit_all = ();
 #my @oncallPhone = ("+50687259239", "+50688457177", "+50687013491", "+50660295500");
-my @oncallPhone = ("+50688457177", "+50660295500", "+50688661958", "+50671097633");
+#my @oncallPhone = ("+50688457177", "+50660295500", "+50688661958", "+50671097633");
 my @oncallPhoneDTV = ("+50688457177");
 
 my $gsm = new Device::Gsm( port => '/dev/ttyUSB0' );
