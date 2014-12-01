@@ -35,6 +35,10 @@ my $ttr_ticket_prio;
 my $ttr_percent;
 my $sms_ttr_subject;
 my $full_ticket_subject;
+my $complete_EON_WG;
+my $is_EON_complete = 0;
+my $EON_Subject;
+my $EON_Id; 
 
 #Checking if pointer for mail spool file exists and performing actions according to condition
 if (-e $ENOTE_MAIL_BYTES_FILE)
@@ -122,7 +126,52 @@ for (;;)
 				$sth->finish();
 				$dbh->commit or die $DBI::errstr;
 			}			
-        }        
+        }
+        #Condition for EON Notifications
+    	$is_EON_complete = 0;
+    	if (/^Subject:\s(EON[\s|\w\d|-]+[\w\d]+\sEscalation\sAlert)\s-\s([\d]+)/ .. /View more details/)
+    	{
+   
+        	if (/^Event & Esc Level.*/ .. /@[\d]+:[\d]+/)
+        	{
+            	if (/^Event & Esc Level:\s*(\d+)/)
+            	{
+            		$EON_Id = $1;
+            	}
+            	my $EON_Wg_Line =  $_;            	
+            	if (/^Message:/ .. /@[\d]+:[\d]+/)
+            	{
+                	chomp($EON_Wg_Line);
+            		$complete_EON_WG = $complete_EON_WG.$EON_Wg_Line;
+        		}
+        		if ($EON_Wg_Line =~ m/@[\d]+:[\d]+/)
+        		{
+        			$complete_EON_WG = $complete_EON_WG."\n";
+        			$is_EON_complete = 1;        		        		
+        		}
+        		if($is_EON_complete == 1)
+    			{
+    				$serverDate = strftime("%m/%d/%Y %I:%M %p", localtime());
+    				$complete_EON_WG =~ s/=|Message:|Tkt:|\s\s//g;
+    				$complete_EON_WG =~ m/(.*)\/(.*)\/(.*)\/(.*)\/(.*)\/(.*)\/(.*)\/(.*)/;
+    				my $EON_problem  = $6;
+    				my $EON_team = $7;
+    				$EON_problem =~ s/Prob://gi;
+    				$EON_team =~ s/Esc.Team://gi;
+    				my $complete_EON_to_DB = "EON Escalation $EON_Id: $EON_problem\n";
+        				
+    				$sth = $dbh->prepare("INSERT INTO ticket_in_dispatched
+            	          (ticket_id, ticket_subject, ticket_workgroup, ticket_sent_pager, ticket_date_added_db, sms_message_to_mobile,ticket_date_sent_page )
+            	            values
+                	       (?, ?, ?, ?, ?, ?,?)");
+					$sth->execute($EON_Id, $complete_EON_to_DB, $EON_team, 'N', $serverDate, $complete_EON_to_DB,'null') or die $DBI::errstr;
+					$sth->finish();
+					$dbh->commit or die $DBI::errstr;
+   				}
+        	}
+    	}
+    
+                
         ##### FOR DTV PAGING #####
         if (/From\snoreply@[\w\d|.]+\s+[\w\d|\s|:]+[\d]+$/ .. /Status: O/)
         {
@@ -140,8 +189,9 @@ for (;;)
         }
     }    
     last;
+    $dbh->disconnect;
 }
-$dbh->disconnect;
+
 $last_byte = tell(INFILE);
 open(my $fh, '>', $ENOTE_MAIL_BYTES_FILE)
         or die "Error while creating file $ENOTE_MAIL_BYTES_FILE: $!\n";
