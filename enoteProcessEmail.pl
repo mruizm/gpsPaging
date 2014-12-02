@@ -10,7 +10,6 @@
 use strict;
 use warnings;
 use lib "/home/rumarco/usr/lib64/perl5";
-
 use DBI;
 use POSIX qw(strftime);
 
@@ -43,23 +42,22 @@ my $EON_Id;
 #Checking if pointer for mail spool file exists and performing actions according to condition
 if (-e $ENOTE_MAIL_BYTES_FILE)
 {
-        open(MY_ENOTE_FILE, $ENOTE_MAIL_BYTES_FILE)
-                or die "Error while reading file $ENOTE_MAIL_BYTES_FILE: $!\n";
-        while(<MY_ENOTE_FILE>)
-        {
-                chomp;
-                $last_byte = $_;
-        }
+	open(MY_ENOTE_FILE, $ENOTE_MAIL_BYTES_FILE)
+		or die "Error while reading file $ENOTE_MAIL_BYTES_FILE: $!\n";
+	while(<MY_ENOTE_FILE>)
+	{
+		chomp;
+		$last_byte = $_;
+	}
 }
 else
 {
-        open(my $fh, '>', $ENOTE_MAIL_BYTES_FILE)
-                or die "Error while creating file $ENOTE_MAIL_BYTES_FILE: $!\n";
-        print $fh "0\n";
-        close $fh;
-        $last_byte = 0;
+	open(my $fh, '>', $ENOTE_MAIL_BYTES_FILE)
+		or die "Error while creating file $ENOTE_MAIL_BYTES_FILE: $!\n";
+	print $fh "0\n";
+	close $fh;
+	$last_byte = 0;
 }
-
 #Declaring mail spool file to check for enote alerts and checking it since last line read
 my $FILE = '/var/spool/mail/rumarco';
 open (INFILE, $FILE) || die "Not able to open the file: $FILE \n";
@@ -73,12 +71,10 @@ for (;;)
     {
     	seek(INFILE, $last_byte, 1);
     }
-
     for (; $_ = <INFILE>; $last_byte = tell)
     {
     	my $line = $_;
-        chomp($line);
-        
+        chomp($line);        
         #Condition that searches for SLO emails and make insert of ticket into into db speficied for it
         if ($line =~ m/^Subject:\s([\w|\-|\s|\d]+\s:\s(N-IM[\d|-]+)\s(\(.+\))\s-\s(TTR\s[\w|\d|-|\s]+))/)
        	{
@@ -131,47 +127,41 @@ for (;;)
     	$is_EON_complete = 0;
     	if (/^Subject:\s(EON[\s|\w\d|-]+[\w\d]+\sEscalation\sAlert)\s-\s([\d]+)/ .. /View more details/)
     	{
-   
-        	if (/^Event & Esc Level.*/ .. /@[\d]+:[\d]+/)
+			my $EON_Subject = $1;
+       		my $EON_Id = $2;       
+        	if (/^Event & Esc Level.*/ .. /@[\d]+/)
         	{
-            	if (/^Event & Esc Level:\s*(\d+)/)
-            	{
-            		$EON_Id = $1;
-            	}
-            	my $EON_Wg_Line =  $_;            	
-            	if (/^Message:/ .. /@[\d]+:[\d]+/)
+            	my $EON_Wg_Line =  $_;
+            	if (/^Message:/ .. /@[\d]+/)
             	{
                 	chomp($EON_Wg_Line);
             		$complete_EON_WG = $complete_EON_WG.$EON_Wg_Line;
         		}
-        		if ($EON_Wg_Line =~ m/@[\d]+:[\d]+/)
+        		if ($EON_Wg_Line =~ m/@[\d]+/)
         		{
         			$complete_EON_WG = $complete_EON_WG."\n";
         			$is_EON_complete = 1;        		        		
         		}
         		if($is_EON_complete == 1)
     			{
-    				$serverDate = strftime("%m/%d/%Y %I:%M %p", localtime());
     				$complete_EON_WG =~ s/=|Message:|Tkt:|\s\s//g;
     				$complete_EON_WG =~ m/(.*)\/(.*)\/(.*)\/(.*)\/(.*)\/(.*)\/(.*)\/(.*)/;
     				my $EON_problem  = $6;
     				my $EON_team = $7;
     				$EON_problem =~ s/Prob://gi;
     				$EON_team =~ s/Esc.Team://gi;
-    				my $complete_EON_to_DB = "EON Escalation $EON_Id: $EON_problem\n";
-        				
     				$sth = $dbh->prepare("INSERT INTO ticket_in_dispatched
-            	          (ticket_id, ticket_subject, ticket_workgroup, ticket_sent_pager, ticket_date_added_db, sms_message_to_mobile,ticket_date_sent_page )
-            	            values
-                	       (?, ?, ?, ?, ?, ?,?)");
+					(ticket_id, ticket_subject, ticket_workgroup, ticket_sent_pager, ticket_date_added_db, sms_message_to_mobile,ticket_date_sent_page )
+					values
+					(?, ?, ?, ?, ?, ?,?)");
 					$sth->execute($EON_Id, $complete_EON_to_DB, $EON_team, 'N', $serverDate, $complete_EON_to_DB,'null') or die $DBI::errstr;
 					$sth->finish();
 					$dbh->commit or die $DBI::errstr;
+      				#print "EON Escalation $EON_Id: $EON_problem\n";
+    				$complete_EON_WG = "";
    				}
         	}
-    	}
-    
-                
+    	}                
         ##### FOR DTV PAGING #####
         if (/From\snoreply@[\w\d|.]+\s+[\w\d|\s|:]+[\d]+$/ .. /Status: O/)
         {
@@ -191,7 +181,6 @@ for (;;)
     last;
     $dbh->disconnect;
 }
-
 $last_byte = tell(INFILE);
 open(my $fh, '>', $ENOTE_MAIL_BYTES_FILE)
         or die "Error while creating file $ENOTE_MAIL_BYTES_FILE: $!\n";
