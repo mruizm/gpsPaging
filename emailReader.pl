@@ -41,42 +41,42 @@ while (<INFILE>)
     $is_EON_complete = 0;
     if (/^Subject:\s(EON[\s|\w\d|-]+[\w\d]+\sEscalation\sAlert)\s-\s([\d]+)/ .. /View more details/)
     {
-		my $EON_Subject = $1;
-        my $EON_Id = $2;       
+                my $EON_Subject = $1;
+        my $EON_Id = $2;
         if (/^Event & Esc Level.*/ .. /@[\d]+/)
         {
             my $EON_Wg_Line =  $_;
             if (/^Message:/ .. /@[\d]+/)
             {
                 chomp($EON_Wg_Line);
-            	$complete_EON_WG = $complete_EON_WG.$EON_Wg_Line;
-        	}
-        	if ($EON_Wg_Line =~ m/@[\d]+/)
-        	{
-        		$complete_EON_WG = $complete_EON_WG."\n";
-        		$is_EON_complete = 1;        		        		
-        	}
-        	if($is_EON_complete == 1)
-    		{
-    			$complete_EON_WG =~ s/=|Message:|Tkt:|\s\s//g;
-    			$complete_EON_WG =~ m/(.*)\/(.*)\/(.*)\/(.*)\/(.*)\/(.*)\/(.*)\/(.*)/;
-    			my $EON_problem  = $6;
-    			my $EON_team = $7;
-    			$EON_problem =~ s/Prob://gi;
-    			$EON_team =~ s/Esc.Team://gi;
-      			print "EON Escalation $EON_Id: $EON_problem\n";
-    			$complete_EON_WG = "";
-   			}
+                $complete_EON_WG = $complete_EON_WG.$EON_Wg_Line;
+                }
+                if ($EON_Wg_Line =~ m/@[\d]+/)
+                {
+                        $complete_EON_WG = $complete_EON_WG."\n";
+                        $is_EON_complete = 1;
+                }
+                if($is_EON_complete == 1)
+                {
+                        $complete_EON_WG =~ s/=|Message:|Tkt:|\s\s//g;
+                        $complete_EON_WG =~ m/(.*)\/(.*)\/(.*)\/(.*)\/(.*)\/(.*)\/(.*)\/(.*)/;
+                        my $EON_problem  = $6;
+                        my $EON_team = $7;
+                        $EON_problem =~ s/Prob://gi;
+                        $EON_team =~ s/Esc.Team://gi;
+                        print "EON Escalation $EON_Id: $EON_problem\n";
+                        $complete_EON_WG = "";
+                        }
         }
     }
-    
+
     ##### FOR DTV PAGING #####
     #if ($line =~ m/From\snoreply@[\w\d|.]+\s+[\w\d|\s|:]+[\d]+$/)
     if (/From\snoreply@[\w\d|.]+\s+[\w\d|\s|:]+[\d]+$/ .. /Status: O/)
     {
         if ($line =~ m/Subject:\sOpenView:\sFrom:([\w\d|:|\s|+|?.]+)/)
         {
-        	print "$1\n";
+                print "$1\n";
         }
     }
 }
