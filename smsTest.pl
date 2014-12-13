@@ -21,16 +21,16 @@ if( $gsm->connect(baudrate => 19200) )
 				last;
 			}
 		}		
-		my $sent = $gsm->send_sms(recipient => $ARGV[0],
+		my $sent = $gsm->send_sms( recipient => $ARGV[0],
 									content   => $ARGV[1]);
         if($sent)
         {
-        	print "SMS: $recipient $content SENT!";
+        	print "SMS: $ARGV[0] $ARGV[1] SENT!\n";
         	last;
         }
         else
         {
-        	print "Retrying delivey of SMS: $recipient $content\n";
+        	print "Retrying delivey of SMS: $ARGV[0] $ARGV[1]\n";
         }
 	}
 }
