@@ -79,6 +79,11 @@ while (my @results = $sth->fetchrow())
                                 					);
                             if ($sms)
                             {
+                            	
+        						##print "UPDATE ticket_in_dispatched SET ticket_sent_pager = $rv  WHERE ticket_id = $ticket_id_db\n";
+        						$update_statement = "UPDATE ticket_in_dispatched SET ticket_sent_pager = ? WHERE ticket_id = ?";
+        						$rv = $dbh->do($update_statement, undef, $response, $ticket_id_db);
+        						$DBI::err && die $DBI::errstr;
                             	last;
                             }
                         }                               
@@ -87,10 +92,7 @@ while (my @results = $sth->fetchrow())
         	$sth_mobile->finish();
         }
         $sth_ito->finish();
-        ##print "UPDATE ticket_in_dispatched SET ticket_sent_pager = $rv  WHERE ticket_id = $ticket_id_db\n";
-        $update_statement = "UPDATE ticket_in_dispatched SET ticket_sent_pager = ? WHERE ticket_id = ?";
-        $rv = $dbh->do($update_statement, undef, $response, $ticket_id_db);
-        $DBI::err && die $DBI::errstr;
+
 }
 $sth->finish();
 
@@ -141,6 +143,11 @@ while (my @results = $sth_info_slo->fetchrow())
                                 					);
                             if ($sms)
                             {
+                            	
+        						#print "UPDATE ticket_with_slo SET ticket_sent_pager = $rv  WHERE ticket_id = $ticket_id_db AND ticket_subject = $ticket_description\n";
+        						$update_statement = "UPDATE ticket_with_slo SET ticket_sent_pager = ? WHERE ticket_id = ? AND ticket_subject = ?";
+        						$rv = $dbh->do($update_statement, undef, $response, $ticket_id_db, $ticket_ttr_percent);
+        						$DBI::err && die $DBI::errstr;
                             	last;
                             }
                         }                               
@@ -149,11 +156,7 @@ while (my @results = $sth_info_slo->fetchrow())
                 $sth_mobile_slo->finish();
         }
         $sth_team_name->finish();
-        #print "UPDATE ticket_with_slo SET ticket_sent_pager = $rv  WHERE ticket_id = $ticket_id_db AND ticket_subject = $ticket_description\n";
-        $update_statement = "UPDATE ticket_with_slo SET ticket_sent_pager = ? WHERE ticket_id = ? AND ticket_subject = ?";
-        $rv = $dbh->do($update_statement, undef, $response, $ticket_id_db, $ticket_ttr_percent);
-        $DBI::err && die $DBI::errstr;
-}
+	}
 $sth_info_slo->finish();
 
 ##### DTV ATTENTION PAGES #####
@@ -187,6 +190,9 @@ while (my @results = $sth->fetchrow())
                               					);
                         if ($sms)
                         {
+                        	$update_statement = "UPDATE dtv_attention_pages SET att_sent_sms = ? WHERE att_alert_id = ?";
+        					$rv = $dbh->do($update_statement, undef, $response, $dtv_id_db);
+        					$DBI::err && die $DBI::errstr;
                         	last;
                         }
                 	}                               
@@ -204,9 +210,7 @@ while (my @results = $sth->fetchrow())
                 #}
         }
         #print "UPDATE ticket_in_dispatched SET ticket_sent_pager = $rv  WHERE ticket_id = $ticket_id_db\n";
-        $update_statement = "UPDATE dtv_attention_pages SET att_sent_sms = ? WHERE att_alert_id = ?";
-        $rv = $dbh->do($update_statement, undef, $response, $dtv_id_db);
-        $DBI::err && die $DBI::errstr;
+        
 
 }
 $sth->finish();
