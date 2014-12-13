@@ -25,6 +25,13 @@ my $ticket_wg;
 my $sms_to_send;
 my $ticket_ttr_percent;
 
+if (checkIfScriptRunning() == 0)
+{
+	print "Script currently running. Exiting routine.\n";
+	exit 0;
+}
+else
+{
 $sth = $dbh->prepare("SELECT ticket_id, ticket_workgroup, sms_message_to_mobile FROM ticket_in_dispatched
                                 where ticket_sent_pager = ?");
 $sth->execute('N') or die $DBI::errstr;
@@ -53,34 +60,31 @@ while (my @results = $sth->fetchrow())
         #       #foreach(@oncallPhone)
                 while (my @results = $sth_mobile->fetchrow())
                 {
-                        my $mobile_phone = $results[0];
-                        #print "$mobile_phone\n";
-                        if( $gsm->connect(baudrate => 19200) )
+                	my $mobile_phone = $results[0];
+                    #print "$mobile_phone\n";
+                    if( $gsm->connect(baudrate => 19200) )
+                    {
+                    	while (1)
                         {
-                                while (1)
+                        	while (1)
+                            {
+                            	my $network_register = $gsm->register();
+                                if ($network_register)
                                 {
-                                	while (1)
-                                	{
-                                		my $network_register = $gsm->register();
-                                		if ($network_register)
-                                		{
-                                			last;
-                                		}
-                                	}
-                                	my $sms = $gsm->send_sms
-                                	(
-                                        recipient => $mobile_phone,
-                                        content   => $sms_to_send
-                                	);
-                                	if ($sms)
-                                	{
-                                		last;
-                                	}
+                                	last;
                                 }
-                               
-                        }
+                            }
+                            my $sms = $gsm->send_sms( recipient => $mobile_phone,
+                            							content   => $sms_to_send
+                                					);
+                            if ($sms)
+                            {
+                            	last;
+                            }
+                        }                               
+                	}
                 }
-                $sth_mobile->finish();
+        	$sth_mobile->finish();
         }
         $sth_ito->finish();
         ##print "UPDATE ticket_in_dispatched SET ticket_sent_pager = $rv  WHERE ticket_id = $ticket_id_db\n";
@@ -119,16 +123,28 @@ while (my @results = $sth_info_slo->fetchrow())
                 #foreach(@oncallPhone)
                 while (my @results = $sth_mobile_slo->fetchrow())
                 {
-                        my $mobile_phone = $results[0];
-                        if( $gsm->connect() )
+                    my $mobile_phone = $results[0];
+                    if( $gsm->connect(baudrate => 19200) )
+                    {
+                    	while (1)
                         {
-                                $gsm->register();
-                                $gsm->send_sms
-                                (
-                                        recipient => $mobile_phone,
-                                        content   => $sms_to_send
-                                );
-                        }
+                        	while (1)
+                            {
+                            	my $network_register = $gsm->register();
+                                if ($network_register)
+                                {
+                                	last;
+                                }
+                            }
+                            my $sms = $gsm->send_sms( recipient => $mobile_phone,
+                            							content   => $sms_to_send
+                                					);
+                            if ($sms)
+                            {
+                            	last;
+                            }
+                        }                               
+                	}
                 }
                 $sth_mobile_slo->finish();
         }
@@ -154,16 +170,38 @@ while (my @results = $sth->fetchrow())
         foreach(@oncallPhoneDTV)
         {
                 my $dtv_mobile_phone = $_;
-                if( $gsm->connect() )
+                if( $gsm->connect(baudrate => 19200) )
                 {
-                        print "$dtv_mobile_phone $dtv_sms_to_send\n";
-                        $gsm->register();
-                        $gsm->send_sms
-                        (
-                                recipient => $dtv_mobile_phone,
-                                content   => $dtv_sms_to_send
-                        );
+                	while (1)
+                    {
+                       	while (1)
+                        {
+                           	my $network_register = $gsm->register();
+                            if ($network_register)
+                            {
+                     	      	last;
+                            }
+                        }
+                        my $sms = $gsm->send_sms( recipient => $dtv_mobile_phone,
+                         						  content   => $dtv_sms_to_send
+                              					);
+                        if ($sms)
+                        {
+                        	last;
+                        }
+                	}                               
                 }
+                #if( $gsm->connect() )
+                #{
+                #        print "$dtv_mobile_phone $dtv_sms_to_send\n";
+                #        $gsm->register();
+                #        $gsm->send_sms
+                #        (
+                #                recipient => $dtv_mobile_phone,
+                #                content   => $dtv_sms_to_send
+                #
+                #      );
+                #}
         }
         #print "UPDATE ticket_in_dispatched SET ticket_sent_pager = $rv  WHERE ticket_id = $ticket_id_db\n";
         $update_statement = "UPDATE dtv_attention_pages SET att_sent_sms = ? WHERE att_alert_id = ?";
@@ -173,3 +211,18 @@ while (my @results = $sth->fetchrow())
 }
 $sth->finish();
 $dbh->disconnect;
+}
+
+## Function to check if script is currently running
+sub checkIfScriptRunning
+{
+        my $runningScriptInstances = `ps -ef | grep smsSentNotification.pl | grep -v grep | wc -l`;
+        if ($runningScriptInstances >= 2)
+        {
+                return 0;
+        }
+        else
+        {
+                return 1;
+        }
+}
