@@ -13,6 +13,8 @@ sub main()
 	my %ttyUSB_PIN = ( "/dev/ttyUSB0" => "0743",
 				  	   "/dev/ttyUSB3" => "8707" );
 	
+	my $serverDate = strftime("%m/%d/%Y %I:%M %p", localtime());
+	print "\n$serverDate : Starting smsSentNotification script...\n";
 	print "\n--- Running initial modem validations... ---\n";
 	my @availableModems = modemInit::checkAvailableModemsAndUnlock(%ttyUSB_PIN);
 	
@@ -42,6 +44,8 @@ sub main()
 	{
 		print "Major issue! No modems available for SMS delivery!\n";
 	}
+	$serverDate = strftime("%m/%d/%Y %I:%M %p", localtime());
+	print "\n$serverDate : Finalized smsSentNotification script...\n";
 }
 
 #Subroutine to process SMS for alerts as "Dispatched"
