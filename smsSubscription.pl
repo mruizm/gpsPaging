@@ -36,6 +36,7 @@ sub main()
 	}
 	$serverDate = strftime("%m/%d/%Y %I:%M %p", localtime());
 	print "\n$serverDate : Finalized smsSubscription script...\n";
+	print "==========================================================\n";
 }
 
 #Sub that check the available modems and unlock them if needed
