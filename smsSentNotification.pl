@@ -46,7 +46,7 @@ sub main()
 	}
 	$serverDate = strftime("%m/%d/%Y %I:%M %p", localtime());
 	print "\n$serverDate : Finalized smsSentNotification script...\n";
-	print "==========================================================\n";
+	print "============================================================\n";
 }
 
 #Subroutine to process SMS for alerts as "Dispatched"
