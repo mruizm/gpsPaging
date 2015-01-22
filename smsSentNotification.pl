@@ -20,7 +20,7 @@ sub main()
 	
 	if ((my $numberModem = @availableModems) eq "2")
 	{
-		print "Good! Both modems available for SMS delivery.\n";
+		print "Good! $numberModem : Both modems available for SMS delivery.\n";
 		print "\n--- Processing Alerts... ---\n";
 		my $selected_modem = $availableModems[0];
 		print "Using modem at $selected_modem\n";
@@ -36,13 +36,13 @@ sub main()
 	if ((my $numberModem = @availableModems) eq "1")
 	{
 		my $selected_modem = shift @availableModems;
-		print "Warning! Just modem at $availableModems[0] is available for SMS delivery!\n";
+		print "Warning! $numberModem : Just modem at @availableModems[0] is available for SMS delivery!\n";
 		dispatchedAlerts($selected_modem);
 		sloAlerts($selected_modem);
 	}
 	if ((my $numberModem = @availableModems) eq "0")
 	{
-		print "Major issue! No modems available for SMS delivery!\n";
+		print "Major issue! $numberModem : No modems available for SMS delivery!\n";
 	}
 	$serverDate = strftime("%m/%d/%Y %I:%M %p", localtime());
 	print "\n$serverDate : Finalized smsSentNotification script...\n";
