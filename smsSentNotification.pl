@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+#SMS Notification Perl Script
 require modemInit;
 
 use strict;
@@ -17,8 +18,9 @@ sub main()
 	print "\n$serverDate : Starting smsSentNotification script...\n";
 	print "\n--- Running initial modem validations... ---\n";
 	my @availableModems = modemInit::checkAvailableModemsAndUnlock(%ttyUSB_PIN);
+	my $numberModem;
 	
-	if ((my $numberModem = @availableModems) eq "2")
+	if (($numberModem = @availableModems) eq "2")
 	{
 		print "Good! $numberModem : Both modems available for SMS delivery.\n";
 		print "\n--- Processing Alerts... ---\n";
@@ -33,14 +35,14 @@ sub main()
 			eonSmsDelivey($selected_modem);
 		}
 	}
-	if ((my $numberModem = @availableModems) eq "1")
+	if (($numberModem = @availableModems) eq "1")
 	{
 		my $selected_modem = shift @availableModems;
-		print "Warning! $numberModem : Just modem at @availableModems[0] is available for SMS delivery!\n";
+		print "Warning! $numberModem : Just modem at $availableModems[0] is available for SMS delivery!\n";
 		dispatchedAlerts($selected_modem);
 		sloAlerts($selected_modem);
 	}
-	if ((my $numberModem = @availableModems) eq "0")
+	if (($numberModem = @availableModems) eq "0")
 	{
 		print "Major issue! $numberModem : No modems available for SMS delivery!\n";
 	}
@@ -179,7 +181,7 @@ sub sloAlerts()
         	chomp($ticket_id_db);
         	chomp($ticket_wg);
         	chomp($ticket_subj);
-        	processSloAlerts($dbh, $gsm, $ticket_subj, $ticket_wg, $ticket_id_db)
+        	processSloAlerts($dbh, $gsm, $ticket_subj, $ticket_wg, $ticket_id_db, $ticket_ttr_percent)
     	}
     }    
 }
@@ -191,6 +193,7 @@ sub processSloAlerts
 	my $ticket_subj_priv = $_[2];
 	my $ticket_wg_priv = $_[3];
 	my $ticket_id_db_priv = $_[4];
+	my $ticket_ttr_percent_priv = $_[5];
 	my $sloColumnToCheck;
 	my $response = "Y";	 
 	
@@ -245,10 +248,10 @@ sub processSloAlerts
  							#print "UPDATE ticket_in_dispatched SET ticket_sent_pager = $rv  WHERE ticket_id = $ticket_id_db\n";
 							my $serverDate = strftime("%m/%d/%Y %I:%M %p", localtime());
  							my $update_statement = "UPDATE ticket_with_slo SET ticket_sent_pager = ? WHERE ticket_id = ? and ticket_subject = ?";
-                           	my $rv = $dbh_priv->do($update_statement, undef, $response, $ticket_id_db_priv, $ticket_ttr_percent);
+                           	my $rv = $dbh_priv->do($update_statement, undef, $response, $ticket_id_db_priv, $ticket_ttr_percent_priv);
                            	$DBI::err && die $DBI::errstr;
                            	$update_statement = "UPDATE ticket_with_slo SET ticket_date_sent_page = ? WHERE ticket_id = ? and ticket_subject = ?";
-                           	$rv = $dbh_priv->do($update_statement, undef, $serverDate, $ticket_id_db_priv, $ticket_ttr_percent);
+                           	$rv = $dbh_priv->do($update_statement, undef, $serverDate, $ticket_id_db_priv, $ticket_ttr_percent_priv);
                            	$DBI::err && die $DBI::errstr;
 		               	}
                    	}
