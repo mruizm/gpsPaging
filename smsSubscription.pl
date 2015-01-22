@@ -35,7 +35,7 @@ sub main()
 		print "Major issue! $numberModem : No modems available for SMS delivery!\n";
 	}
 	$serverDate = strftime("%m/%d/%Y %I:%M %p", localtime());
-	print "\n$serverDate : Finalized smsSubscription script...\n";
+	print "\n$serverDate : Finalized smsSubscription script...\n\n";
 	print "============================================================\n";
 }
 
