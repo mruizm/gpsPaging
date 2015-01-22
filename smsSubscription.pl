@@ -11,7 +11,8 @@ sub main()
 	#Definition of the installed serial port with its PIN code
 	my %ttyUSB_PIN = ( "/dev/ttyUSB0" => "0743",
 				  	   "/dev/ttyUSB3" => "8707" );
-	
+	my $serverDate = strftime("%m/%d/%Y %I:%M %p", localtime());
+	print "\n$serverDate : Starting smsSentNotification script...\n";
 	print "\n--- Running initial modem validations... ---\n";
 	my @availableModems = checkAvailableModemsAndUnlock(%ttyUSB_PIN);
 	
@@ -33,6 +34,8 @@ sub main()
 	{
 		print "Major issue! No modems available for SMS delivery!\n";
 	}
+	$serverDate = strftime("%m/%d/%Y %I:%M %p", localtime());
+	print "\n$serverDate : Finalized smsSentNotification script...\n";
 }
 
 #Sub that check the available modems and unlock them if needed
