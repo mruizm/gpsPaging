@@ -244,11 +244,11 @@ sub processSloAlerts
 							print "Mobile: $mobile_phone Notification: $ticket_subj_priv\n";
  							#print "UPDATE ticket_in_dispatched SET ticket_sent_pager = $rv  WHERE ticket_id = $ticket_id_db\n";
 							my $serverDate = strftime("%m/%d/%Y %I:%M %p", localtime());
- 							my $update_statement = "UPDATE ticket_with_slo SET ticket_sent_pager = ? WHERE ticket_id = ?";
-                           	my $rv = $dbh_priv->do($update_statement, undef, $response, $ticket_id_db_priv);
+ 							my $update_statement = "UPDATE ticket_with_slo SET ticket_sent_pager = ? WHERE ticket_id = ? and ticket_subject = ?";
+                           	my $rv = $dbh_priv->do($update_statement, undef, $response, $ticket_id_db_priv, $ticket_ttr_percent);
                            	$DBI::err && die $DBI::errstr;
-                           	$update_statement = "UPDATE ticket_with_slo SET ticket_date_sent_page = ? WHERE ticket_id = ?";
-                           	$rv = $dbh_priv->do($update_statement, undef, $serverDate, $ticket_id_db_priv);
+                           	$update_statement = "UPDATE ticket_with_slo SET ticket_date_sent_page = ? WHERE ticket_id = ? and ticket_subject = ?";
+                           	$rv = $dbh_priv->do($update_statement, undef, $serverDate, $ticket_id_db_priv, $ticket_ttr_percent);
                            	$DBI::err && die $DBI::errstr;
 		               	}
                    	}
