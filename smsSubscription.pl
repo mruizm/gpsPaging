@@ -12,13 +12,13 @@ sub main()
 	my %ttyUSB_PIN = ( "/dev/ttyUSB0" => "0743",
 				  	   "/dev/ttyUSB3" => "8707" );
 	my $serverDate = strftime("%m/%d/%Y %I:%M %p", localtime());
-	print "\n$serverDate : Starting smsSentNotification script...\n";
+	print "\n$serverDate : Starting smsSubscription script...\n";
 	print "\n--- Running initial modem validations... ---\n";
 	my @availableModems = checkAvailableModemsAndUnlock(%ttyUSB_PIN);
 	
 	if ((my $numberModem = @availableModems) eq "2")
 	{
-		print "Good! Both modems available for SMS delivery.\n";
+		print "Good! $numberModem : Both modems available for SMS delivery.\n";
 		print "\n--- Checking for new messages in detected modems... ---\n ";
 		foreach (@availableModems)
 		{
@@ -28,14 +28,14 @@ sub main()
 	}
 	if ((my $numberModem = @availableModems) eq "1")
 	{
-		print "Warning! Just modem at @availableModems[0] is available for SMS delivery!\n";
+		print "Warning! $numberModem : Just modem at @availableModems[0] is available for SMS delivery!\n";
 	}
-	else
+	if ((my $numberModem = @availableModems) eq "0")
 	{
-		print "Major issue! No modems available for SMS delivery!\n";
+		print "Major issue! $numberModem : No modems available for SMS delivery!\n";
 	}
 	$serverDate = strftime("%m/%d/%Y %I:%M %p", localtime());
-	print "\n$serverDate : Finalized smsSentNotification script...\n";
+	print "\n$serverDate : Finalized smsSubscription script...\n";
 }
 
 #Sub that check the available modems and unlock them if needed
